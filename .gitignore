@@ -161,3 +161,22 @@ server/uploads/
 *.local
 .DS_Store
 Thumbs.db
+
+# Windows
+desktop.ini
+ehthumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Fichiers temporaires
+*.tmp
+*.temp
+*~
+*.swp
+*.swo
+
+# macOS
+.Spotlight-V100/
+.Trashes/
