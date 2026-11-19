@@ -1,0 +1,45 @@
+import { createBrowserRouter, Navigate } from 'react-router-dom';
+import AppLayout from '../components/layout/AppLayout.jsx';
+import ProtectedRoute from '../components/routing/ProtectedRoute.jsx';
+import LoginPage from '../features/auth/LoginPage.jsx';
+import RegisterPage from '../features/auth/RegisterPage.jsx';
+import ResetPasswordPage from '../features/auth/ResetPasswordPage.jsx';
+import NotFoundPage from '../features/auth/NotFoundPage.jsx';
+import DashboardPage from '../features/dashboard/DashboardPage.jsx';
+import SecurityPage from '../features/settings/SecurityPage.jsx';
+
+export const router = createBrowserRouter([
+  {
+    path: '/',
+    element: <Navigate to="/app" replace />,
+  },
+  {
+    path: '/connexion',
+    element: <LoginPage />,
+  },
+  {
+    path: '/inscription',
+    element: <RegisterPage />,
+  },
+  {
+    path: '/mot-de-passe-oublie',
+    element: <ResetPasswordPage />,
+  },
+  {
+    path: '/app',
+    element: (
+      <ProtectedRoute>
+        <AppLayout />
+      </ProtectedRoute>
+    ),
+    children: [
+      { index: true, element: <DashboardPage /> },
+      { path: 'parametres', element: <Navigate to="/app/parametres/securite" replace /> },
+      { path: 'parametres/securite', element: <SecurityPage /> },
+    ],
+  },
+  {
+    path: '*',
+    element: <NotFoundPage />,
+  },
+]);
