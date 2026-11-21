@@ -46,7 +46,7 @@ function publicUser(user) {
   };
 }
 
-function buildAuthResult({ user, company, refreshToken, recoveryCode }) {
+function buildAuthResult({ user, company, refreshToken, sessionId, recoveryCode }) {
   return {
     user: publicUser(user),
     company: { id: company.id, name: company.name },
@@ -54,6 +54,7 @@ function buildAuthResult({ user, company, refreshToken, recoveryCode }) {
       userId: user.id,
       companyId: user.companyId,
       role: user.role,
+      sessionId,
     }),
     refreshToken,
     csrfToken: generateCsrfToken(),
@@ -142,6 +143,7 @@ export async function register(input, context) {
       user,
       company,
       refreshToken: session.token,
+      sessionId: session.id,
       recoveryCode: formatRecoveryCode(rawRecoveryCode),
     });
   } catch (error) {
@@ -200,6 +202,7 @@ export async function login(input, context) {
       user,
       company: { id: user.companyId, name: user.companyName },
       refreshToken: session.token,
+      sessionId: session.id,
     });
   } catch (error) {
     await conn.rollback().catch(() => undefined);
@@ -270,6 +273,7 @@ export async function refresh(context) {
       user,
       company: { id: user.companyId, name: user.companyName },
       refreshToken: newSession.token,
+      sessionId: newSession.id,
     });
   } catch (error) {
     await conn.rollback().catch(() => undefined);

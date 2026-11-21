@@ -119,7 +119,7 @@ Règles :
 | A3  | FK composites `(company_id, id)` sur toutes les relations métier, lignes incluses | Empêche au niveau SQL tout rattachement inter-entreprises | Contrôle applicatif seul               |
 | A4  | Montants `BIGINT` (XOF entier)                                                    | Pas de flottant, pas d'arrondi monétaire                  | `DECIMAL`                              |
 | A5  | Solde et statut de paiement calculés                                              | Source de vérité unique : `payments`                      | Cache `amount_paid`                    |
-| A6  | Access JWT 15 min + refresh 30 j rotatif haché en base                            | Révocation réelle                                         | JWT longue durée                       |
+| A6  | Access JWT 15 min lié à la session (`sid`) + refresh 30 j rotatif haché en base   | Révocation réelle et immédiate                            | JWT longue durée                       |
 | A7  | Cookies httpOnly, Secure en prod, SameSite=Lax                                    | Pas de token lisible en JS                                | localStorage                           |
 | A8  | CSRF double-submit                                                                | Défense complémentaire                                    | SameSite seul                          |
 | A9  | Numérotation par `document_sequences` + verrou ligne                              | Unicité et sûreté en concurrence                          | `MAX(number)+1`                        |
@@ -184,8 +184,8 @@ Aucun `company_id` accepté depuis le client : il provient du JWT
 
 ### 4.2 Flux d'une requête protégée
 
-1. `requireAuth` : cookie access, signature, expiration → `{ userId, companyId, role }` (identifiants en chaînes).
-2. `requireActiveUser` : utilisateur existant et actif.
+1. `requireAuth` : cookie access, signature, expiration, claim `sid`, puis vérification en une seule requête de la session (existante, rattachée à l'utilisateur, non révoquée, non expirée) et de l'utilisateur actif → `{ userId, companyId, role, sessionId }` et `req.user` (identifiants en chaînes).
+2. `requireActiveUser` : garde-fou de compatibilité, vérifie que `req.user` est présent (aucune requête SQL).
 3. `validate(schema)` : validation stricte (whitelist), rejet 422.
 4. `csrfProtect` : comparaison cookie/header sur les écritures.
 5. Controller → Service → Repository (`companyId` obligatoire).
@@ -754,8 +754,12 @@ Contrôle serveur obligatoire.
 - Access JWT 15 min (`rp_at`, httpOnly, Secure en prod, SameSite=Lax, Path=/).
 - Refresh 30 jours (`rp_rt`, httpOnly, SameSite=Lax, Path=/auth), haché
   SHA-256, rotation à chaque refresh, réutilisation → révocation.
-- Claims : `sub`, `cid`, `role`, `jti`, **en chaînes**. La base reste la
-  référence pour `is_active` et les révocations.
+- Claims : `sub`, `cid`, `role`, `sid`, `jti`, **en chaînes**. `sid` lie
+  l'access token à la session serveur ; `requireAuth` vérifie à chaque requête
+  que la session existe, appartient à l'utilisateur et n'est ni révoquée ni
+  expirée. La base reste la référence pour `is_active` et les révocations.
+- Déconnexion, réinitialisation ou changement de mot de passe : les sessions
+  sont révoquées et les access tokens correspondants sont rejetés immédiatement.
 - Aucun token lisible en JS. `GET /auth/me` restaure la session.
 - Axios : refresh unique simultané (single-flight), rejeu, sinon déconnexion.
 

@@ -55,6 +55,21 @@ export async function findActiveUser(conn, { userId, companyId }) {
   return rows[0] ? mapUser(rows[0]) : null;
 }
 
+export async function findActiveUserForSession(conn, { userId, companyId, sessionId }) {
+  const [rows] = await conn.execute(
+    `SELECT ${USER_COLUMNS} ${USER_FROM}
+     JOIN sessions s ON s.id = ? AND s.user_id = u.id
+     WHERE u.id = ? AND u.company_id = ?
+       AND s.revoked_at IS NULL
+       AND s.expires_at > UTC_TIMESTAMP()
+       AND u.is_active = 1
+       AND u.deleted_at IS NULL LIMIT 1`,
+    [sessionId, userId, companyId],
+  );
+
+  return rows[0] ? mapUser(rows[0]) : null;
+}
+
 export async function findActiveUserByIdForUpdate(conn, userId) {
   const [rows] = await conn.execute(
     `SELECT ${USER_COLUMNS} ${USER_FROM}

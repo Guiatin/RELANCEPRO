@@ -3,12 +3,13 @@ import jwt from 'jsonwebtoken';
 import { env } from '../config/env.js';
 import { JWT_AUDIENCE, JWT_ISSUER } from '../config/constants.js';
 
-export function signAccessToken({ userId, companyId, role }) {
+export function signAccessToken({ userId, companyId, role, sessionId }) {
   return jwt.sign(
     {
       sub: String(userId),
       cid: String(companyId),
       role: String(role),
+      sid: String(sessionId),
       jti: randomUUID(),
     },
     env.JWT_ACCESS_SECRET,

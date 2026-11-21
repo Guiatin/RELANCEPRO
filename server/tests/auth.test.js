@@ -1,7 +1,10 @@
+import jwt from 'jsonwebtoken';
 import request from 'supertest';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { app } from '../src/app.js';
 import { pool } from '../src/config/db.js';
+import { JWT_AUDIENCE, JWT_ISSUER } from '../src/config/constants.js';
+import { env } from '../src/config/env.js';
 import { runMigrations } from '../src/db/migrate.js';
 import { normalizeRecoveryCode, sha256 } from '../src/utils/crypto.js';
 
@@ -33,6 +36,23 @@ function csrfToken(response) {
 
 function refreshToken(response) {
   return cookieValue(response, 'rp_rt');
+}
+
+function accessToken(response) {
+  return cookieValue(response, 'rp_at');
+}
+
+function signToken(payload) {
+  return jwt.sign(payload, env.JWT_ACCESS_SECRET, {
+    algorithm: 'HS256',
+    expiresIn: '15m',
+    issuer: JWT_ISSUER,
+    audience: JWT_AUDIENCE,
+  });
+}
+
+function decodeToken(token) {
+  return jwt.decode(token);
 }
 
 async function registerAgent(overrides = {}) {
@@ -387,6 +407,196 @@ describe('Mot de passe et code de récupération', () => {
       new_password: 'Nouveau!42',
     });
     expect(newCodeAttempt.status).toBe(200);
+  });
+});
+
+describe('Révocation des access tokens (sid)', () => {
+  function getWithAccess(access) {
+    return request(app)
+      .get('/api/v1/auth/me')
+      .set('Cookie', [`rp_at=${access}`]);
+  }
+
+  it('rejette un JWT sans claim sid', async () => {
+    const { response } = await registerAgent();
+    const decoded = decodeToken(accessToken(response));
+
+    const token = signToken({
+      sub: decoded.sub,
+      cid: decoded.cid,
+      role: decoded.role,
+      jti: 'sans-sid',
+    });
+
+    const me = await getWithAccess(token);
+    expect(me.status).toBe(401);
+  });
+
+  it('émet un sid correspondant à la session persistée', async () => {
+    const { response } = await registerAgent();
+    const decoded = decodeToken(accessToken(response));
+
+    expect(decoded.sid).toMatch(/^\d+$/);
+
+    const [sessions] = await pool.query('SELECT user_id FROM sessions WHERE id = ?', [decoded.sid]);
+    expect(sessions).toHaveLength(1);
+    expect(String(sessions[0].user_id)).toBe(decoded.sub);
+  });
+
+  it('rejette un sid non numérique', async () => {
+    const { response } = await registerAgent();
+    const decoded = decodeToken(accessToken(response));
+
+    const token = signToken({
+      sub: decoded.sub,
+      cid: decoded.cid,
+      role: decoded.role,
+      sid: 'pas-un-nombre',
+      jti: 'sid-invalide',
+    });
+
+    const me = await getWithAccess(token);
+    expect(me.status).toBe(401);
+  });
+
+  it('rejette un sid appartenant à un autre utilisateur', async () => {
+    const first = await registerAgent();
+    const second = await registerAgent({
+      email: 'autre@example.com',
+      company_name: 'Beta SARL',
+    });
+    const firstPayload = decodeToken(accessToken(first.response));
+    const secondPayload = decodeToken(accessToken(second.response));
+
+    const token = signToken({
+      sub: firstPayload.sub,
+      cid: firstPayload.cid,
+      role: firstPayload.role,
+      sid: secondPayload.sid,
+      jti: 'sid-etranger',
+    });
+
+    const me = await getWithAccess(token);
+    expect(me.status).toBe(401);
+  });
+
+  it('rejette une session révoquée en base', async () => {
+    const { response } = await registerAgent();
+    await pool.query('UPDATE sessions SET revoked_at = UTC_TIMESTAMP()');
+
+    const me = await getWithAccess(accessToken(response));
+    expect(me.status).toBe(401);
+  });
+
+  it('rejette une session expirée en base', async () => {
+    const { response } = await registerAgent();
+    await pool.query('UPDATE sessions SET expires_at = UTC_TIMESTAMP() - INTERVAL 1 MINUTE');
+
+    const me = await getWithAccess(accessToken(response));
+    expect(me.status).toBe(401);
+  });
+
+  it("invalide immédiatement l'access token après déconnexion", async () => {
+    const { agent, response } = await registerAgent();
+    const access = accessToken(response);
+
+    const logout = await agent.post('/api/v1/auth/logout').set('X-CSRF-Token', csrfToken(response));
+    expect(logout.status).toBe(204);
+
+    const me = await getWithAccess(access);
+    expect(me.status).toBe(401);
+  });
+
+  it("invalide immédiatement l'access token après réinitialisation du mot de passe", async () => {
+    const { response } = await registerAgent();
+    const access = accessToken(response);
+
+    const reset = await request(app).post('/api/v1/auth/reset-password').send({
+      email: REGISTER.email,
+      recovery_code: response.body.data.recovery_code,
+      new_password: 'Nouveau!42',
+    });
+    expect(reset.status).toBe(200);
+
+    const me = await getWithAccess(access);
+    expect(me.status).toBe(401);
+  });
+
+  it('invalide les access tokens des autres appareils au changement de mot de passe', async () => {
+    const first = await registerAgent();
+    const second = await loginAgent();
+    const firstAccess = accessToken(first.response);
+    const secondAccess = accessToken(second.response);
+
+    const change = await first.agent
+      .patch('/api/v1/auth/password')
+      .set('X-CSRF-Token', csrfToken(first.response))
+      .send({ current_password: REGISTER.password, new_password: 'Nouveau!42' });
+    expect(change.status).toBe(200);
+
+    expect((await getWithAccess(secondAccess)).status).toBe(401);
+    expect((await getWithAccess(firstAccess)).status).toBe(200);
+  });
+
+  it("invalide l'access token lors de la rotation du refresh", async () => {
+    const { agent, response } = await registerAgent();
+    const oldAccess = accessToken(response);
+
+    const refreshed = await agent
+      .post('/api/v1/auth/refresh')
+      .set('X-CSRF-Token', csrfToken(response));
+    expect(refreshed.status).toBe(200);
+
+    const newAccess = accessToken(refreshed);
+
+    expect((await getWithAccess(oldAccess)).status).toBe(401);
+    expect((await getWithAccess(newAccess)).status).toBe(200);
+  });
+
+  it('invalide tous les access tokens après détection de réutilisation du refresh', async () => {
+    const { agent, response } = await registerAgent();
+    const oldRefresh = refreshToken(response);
+
+    const refreshed = await agent
+      .post('/api/v1/auth/refresh')
+      .set('X-CSRF-Token', csrfToken(response));
+    expect(refreshed.status).toBe(200);
+
+    const currentAccess = accessToken(refreshed);
+
+    const reuse = await request(app)
+      .post('/api/v1/auth/refresh')
+      .set('Cookie', [`rp_rt=${oldRefresh}`, 'csrf_token=probe'])
+      .set('X-CSRF-Token', 'probe');
+    expect(reuse.status).toBe(401);
+
+    expect((await getWithAccess(currentAccess)).status).toBe(401);
+  });
+
+  it("conserve les sessions des autres appareils lors d'une déconnexion", async () => {
+    const first = await registerAgent();
+    const second = await loginAgent();
+
+    const logout = await first.agent
+      .post('/api/v1/auth/logout')
+      .set('X-CSRF-Token', csrfToken(first.response));
+    expect(logout.status).toBe(204);
+
+    expect((await getWithAccess(accessToken(first.response))).status).toBe(401);
+    expect((await getWithAccess(accessToken(second.response))).status).toBe(200);
+  });
+
+  it("conserve les sessions des autres appareils lors d'une rotation refresh", async () => {
+    const first = await registerAgent();
+    const second = await loginAgent();
+    const secondAccess = accessToken(second.response);
+
+    const refreshed = await first.agent
+      .post('/api/v1/auth/refresh')
+      .set('X-CSRF-Token', csrfToken(first.response));
+    expect(refreshed.status).toBe(200);
+
+    expect((await getWithAccess(secondAccess)).status).toBe(200);
   });
 });
 
