@@ -8,6 +8,7 @@ import { logger } from './utils/logger.js';
 import healthRouter from './routes/health.js';
 import authRouter from './routes/auth.js';
 import clientsRouter from './routes/clients.js';
+import productsRouter from './routes/products.js';
 import { globalLimiter } from './middlewares/rateLimit.js';
 import { notFound } from './middlewares/notFound.js';
 import { errorHandler } from './middlewares/errorHandler.js';
@@ -34,6 +35,7 @@ app.use(globalLimiter);
 app.use('/api/v1/health', healthRouter);
 app.use('/api/v1/auth', authRouter);
 app.use('/api/v1/clients', clientsRouter);
+app.use('/api/v1/products', productsRouter);
 
 app.use(notFound);
 app.use(errorHandler);
