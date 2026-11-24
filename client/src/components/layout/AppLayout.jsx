@@ -26,7 +26,7 @@ const NAV_GROUPS = [
   {
     label: 'Commercial',
     items: [
-      { label: 'Clients', icon: Users, soon: true },
+      { label: 'Clients', to: '/app/clients', icon: Users },
       { label: 'Produits & services', icon: Package, soon: true },
       { label: 'Devis', icon: FileText, soon: true },
       { label: 'Factures', icon: ReceiptText, soon: true },
@@ -45,8 +45,17 @@ const NAV_GROUPS = [
 
 const PAGE_TITLES = {
   '/app': 'Tableau de bord',
+  '/app/clients': 'Clients',
+  '/app/clients/nouveau': 'Nouveau client',
   '/app/parametres/securite': 'Sécurité du compte',
 };
+
+function pageTitle(pathname) {
+  if (/^\/app\/clients\/[^/]+\/modifier$/.test(pathname)) return 'Modifier le client';
+  if (/^\/app\/clients\/[^/]+$/.test(pathname)) return 'Fiche client';
+
+  return PAGE_TITLES[pathname] ?? 'Espace entreprise';
+}
 
 function initials(name = '') {
   return name
@@ -166,7 +175,7 @@ export default function AppLayout() {
   const navigate = useNavigate();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
-  const title = PAGE_TITLES[location.pathname] ?? 'Espace entreprise';
+  const title = pageTitle(location.pathname);
 
   useEffect(() => {
     if (!drawerOpen) return undefined;

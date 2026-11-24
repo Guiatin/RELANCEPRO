@@ -6,6 +6,9 @@ import RegisterPage from '../features/auth/RegisterPage.jsx';
 import ResetPasswordPage from '../features/auth/ResetPasswordPage.jsx';
 import NotFoundPage from '../features/auth/NotFoundPage.jsx';
 import DashboardPage from '../features/dashboard/DashboardPage.jsx';
+import ClientsPage from '../features/clients/ClientsPage.jsx';
+import ClientDetailPage from '../features/clients/ClientDetailPage.jsx';
+import ClientFormPage from '../features/clients/ClientFormPage.jsx';
 import SecurityPage from '../features/settings/SecurityPage.jsx';
 
 export const router = createBrowserRouter([
@@ -34,6 +37,10 @@ export const router = createBrowserRouter([
     ),
     children: [
       { index: true, element: <DashboardPage /> },
+      { path: 'clients', element: <ClientsPage /> },
+      { path: 'clients/nouveau', element: <ClientFormPage /> },
+      { path: 'clients/:id', element: <ClientDetailPage /> },
+      { path: 'clients/:id/modifier', element: <ClientFormPage /> },
       { path: 'parametres', element: <Navigate to="/app/parametres/securite" replace /> },
       { path: 'parametres/securite', element: <SecurityPage /> },
     ],
