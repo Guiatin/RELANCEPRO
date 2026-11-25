@@ -26,7 +26,7 @@ describe('RegisterPage', () => {
       user: { email: 'awa@example.com' },
       recovery_code: RECOVERY_CODE,
     });
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     renderPage(register);
 
     await user.type(screen.getByLabelText('Nom de l’entreprise'), 'Acme SARL');
