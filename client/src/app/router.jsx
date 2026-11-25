@@ -9,6 +9,9 @@ import DashboardPage from '../features/dashboard/DashboardPage.jsx';
 import ClientsPage from '../features/clients/ClientsPage.jsx';
 import ClientDetailPage from '../features/clients/ClientDetailPage.jsx';
 import ClientFormPage from '../features/clients/ClientFormPage.jsx';
+import ProductsPage from '../features/products/ProductsPage.jsx';
+import ProductDetailPage from '../features/products/ProductDetailPage.jsx';
+import ProductFormPage from '../features/products/ProductFormPage.jsx';
 import SecurityPage from '../features/settings/SecurityPage.jsx';
 
 export const router = createBrowserRouter([
@@ -41,6 +44,10 @@ export const router = createBrowserRouter([
       { path: 'clients/nouveau', element: <ClientFormPage /> },
       { path: 'clients/:id', element: <ClientDetailPage /> },
       { path: 'clients/:id/modifier', element: <ClientFormPage /> },
+      { path: 'products', element: <ProductsPage /> },
+      { path: 'products/nouveau', element: <ProductFormPage /> },
+      { path: 'products/:id', element: <ProductDetailPage /> },
+      { path: 'products/:id/modifier', element: <ProductFormPage /> },
       { path: 'parametres', element: <Navigate to="/app/parametres/securite" replace /> },
       { path: 'parametres/securite', element: <SecurityPage /> },
     ],
