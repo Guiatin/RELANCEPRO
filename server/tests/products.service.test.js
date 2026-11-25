@@ -27,7 +27,7 @@ const PRODUCT = {
   name: 'Chaise',
   description: null,
   unit: null,
-  unitPrice: '1500',
+  unitPrice: 1500,
   taxRate: '18.00',
   isActive: true,
 };
@@ -89,7 +89,7 @@ describe('createProduct', () => {
         name: '  Chaise  ',
         description: 'Bois',
         unit: ' pièce ',
-        unit_price: '1500',
+        unit_price: 1500,
         tax_rate: '18',
         is_active: true,
       },
@@ -101,7 +101,7 @@ describe('createProduct', () => {
       name: 'Chaise',
       description: 'Bois',
       unit: 'pièce',
-      unitPrice: '1500',
+      unitPrice: 1500,
       taxRate: '18',
       isActive: true,
     });
@@ -152,24 +152,33 @@ describe('createProduct', () => {
     );
   });
 
-  it('accepte la borne maximale BIGINT UNSIGNED', async () => {
+  it('accepte la borne maximale de 999 999 999 999', async () => {
     productsRepository.create.mockResolvedValue('42');
     productsRepository.findById.mockResolvedValue(PRODUCT);
 
-    await createProduct(
-      { type: 'product', name: 'Max', unit_price: '18446744073709551615' },
-      CONTEXT,
-    );
+    await createProduct({ type: 'product', name: 'Max', unit_price: 999999999999 }, CONTEXT);
 
     expect(productsRepository.create).toHaveBeenCalledWith(
       pool,
       '3',
-      expect.objectContaining({ unitPrice: '18446744073709551615' }),
+      expect.objectContaining({ unitPrice: 999999999999 }),
     );
   });
 
-  it('refuse un prix hors bornes ou mal formé', async () => {
-    const invalidPrices = ['18446744073709551616', '-1', '1.5', 'abc', '', null];
+  it('refuse un prix hors bornes, décimal ou fourni en chaîne', async () => {
+    const invalidPrices = [
+      -1,
+      1.5,
+      1000000000000,
+      '1500',
+      '0',
+      '1.5',
+      '',
+      null,
+      NaN,
+      Infinity,
+      Number.MAX_SAFE_INTEGER + 1,
+    ];
 
     for (const unitPrice of invalidPrices) {
       await expectValidationError(
@@ -177,27 +186,6 @@ describe('createProduct', () => {
         'unit_price',
       );
     }
-
-    await expectValidationError(
-      createProduct(
-        { type: 'product', name: 'X', unit_price: Number.MAX_SAFE_INTEGER + 1 },
-        CONTEXT,
-      ),
-      'unit_price',
-    );
-  });
-
-  it('conserve un grand prix fourni en chaîne sans conversion Number', async () => {
-    productsRepository.create.mockResolvedValue('42');
-    productsRepository.findById.mockResolvedValue(PRODUCT);
-
-    await createProduct({ type: 'product', name: 'X', unit_price: '9007199254740993' }, CONTEXT);
-
-    expect(productsRepository.create).toHaveBeenCalledWith(
-      pool,
-      '3',
-      expect.objectContaining({ unitPrice: '9007199254740993' }),
-    );
   });
 
   it('accepte les taux de TVA valides', async () => {

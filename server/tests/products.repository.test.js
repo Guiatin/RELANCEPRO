@@ -17,6 +17,11 @@ async function createCompany(name) {
 
 async function cleanDatabase() {
   await pool.query('DELETE FROM products');
+  await pool.query('DELETE FROM clients');
+  await pool.query('DELETE FROM audit_logs');
+  await pool.query('DELETE FROM sessions');
+  await pool.query('DELETE FROM recovery_codes');
+  await pool.query('DELETE FROM users');
   await pool.query('DELETE FROM companies');
 }
 
@@ -57,7 +62,7 @@ describe('CRUD produits', () => {
       name: 'Chaise',
       description: 'Chaise en bois',
       unit: 'pièce',
-      unitPrice: '1500',
+      unitPrice: 1500,
       taxRate: '18.00',
       isActive: true,
     });
@@ -71,7 +76,7 @@ describe('CRUD produits', () => {
     expect(result.updated).toBe(true);
     expect(result.product).toMatchObject({
       name: 'Chaise haute',
-      unitPrice: '2000',
+      unitPrice: 2000,
       isActive: false,
     });
 
@@ -87,7 +92,7 @@ describe('CRUD produits', () => {
     expect(await findById(pool, companyId, id)).toMatchObject({
       description: null,
       unit: null,
-      unitPrice: '0',
+      unitPrice: 0,
       taxRate: '18.00',
       isActive: true,
     });
@@ -195,13 +200,13 @@ describe('Isolation multi-tenant', () => {
   });
 });
 
-describe('Identifiants et montants BIGINT', () => {
-  it('conserve les identifiants et le prix en chaînes sans perte de précision', async () => {
+describe('Identifiants et montants', () => {
+  it('conserve les identifiants en chaînes et le prix en nombre', async () => {
     const companyId = await createCompany('Alpha');
     const id = await create(pool, companyId, {
       type: 'product',
       name: 'Gros montant',
-      unitPrice: '9007199254740993',
+      unitPrice: 999999999999,
     });
 
     const product = await findById(pool, companyId, id);
@@ -209,8 +214,8 @@ describe('Identifiants et montants BIGINT', () => {
     expect(typeof product.companyId).toBe('string');
     expect(product.id).toBe(id);
     expect(product.companyId).toBe(companyId);
-    expect(typeof product.unitPrice).toBe('string');
-    expect(product.unitPrice).toBe('9007199254740993');
+    expect(typeof product.unitPrice).toBe('number');
+    expect(product.unitPrice).toBe(999999999999);
   });
 });
 

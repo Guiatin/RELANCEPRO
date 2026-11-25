@@ -63,18 +63,19 @@ describe('CRUD produits', () => {
       name: 'Chaise',
       description: 'Chaise en bois',
       unit: 'pièce',
-      unit_price: '1500',
+      unit_price: 1500,
     });
 
     expect(created.status).toBe(201);
     expect(typeof created.body.data.id).toBe('string');
     expect(created.body.data.id).toMatch(/^\d+$/);
+    expect(typeof created.body.data.unitPrice).toBe('number');
     expect(created.body.data).toMatchObject({
       type: 'product',
       name: 'Chaise',
       description: 'Chaise en bois',
       unit: 'pièce',
-      unitPrice: '1500',
+      unitPrice: 1500,
       taxRate: '18.00',
       isActive: true,
     });
@@ -94,11 +95,11 @@ describe('CRUD produits', () => {
     const updated = await agent
       .patch(`${BASE}/${id}`)
       .set('X-CSRF-Token', csrf)
-      .send({ name: 'Table', unit_price: '2000', is_active: false });
+      .send({ name: 'Table', unit_price: 2000, is_active: false });
 
     expect(updated.status).toBe(200);
     expect(updated.body.data.name).toBe('Table');
-    expect(updated.body.data.unitPrice).toBe('2000');
+    expect(updated.body.data.unitPrice).toBe(2000);
     expect(updated.body.data.isActive).toBe(false);
 
     const removed = await agent.delete(`${BASE}/${id}`).set('X-CSRF-Token', csrf);
@@ -143,6 +144,20 @@ describe('CRUD produits', () => {
     expect(page.body.data[0].name).toBe('Nettoyage');
   });
 
+  it('accepte le prix maximal 999 999 999 999 et le renvoie en nombre', async () => {
+    const { agent, csrf } = await register({ email: 'a@example.com', company: 'Alpha' });
+
+    const created = await createProduct(agent, csrf, {
+      type: 'product',
+      name: 'Prix maximal',
+      unit_price: 999999999999,
+    });
+
+    expect(created.status).toBe(201);
+    expect(created.body.data.unitPrice).toBe(999999999999);
+    expect(typeof created.body.data.unitPrice).toBe('number');
+  });
+
   it('renvoie 404 pour un produit inexistant', async () => {
     const { agent } = await register({ email: 'a@example.com', company: 'Alpha' });
 
@@ -180,19 +195,26 @@ describe('Validation', () => {
     const badType = await createProduct(agent, csrf, { type: 'other', name: 'Chaise' });
     expect(badType.status).toBe(422);
 
-    const numericPrice = await createProduct(agent, csrf, {
+    const stringPrice = await createProduct(agent, csrf, {
       type: 'product',
       name: 'Chaise',
-      unit_price: 1500,
+      unit_price: '1500',
     });
-    expect(numericPrice.status).toBe(422);
+    expect(stringPrice.status).toBe(422);
 
-    const leadingZeros = await createProduct(agent, csrf, {
+    const decimalPrice = await createProduct(agent, csrf, {
       type: 'product',
       name: 'Chaise',
-      unit_price: '007',
+      unit_price: 12.5,
     });
-    expect(leadingZeros.status).toBe(422);
+    expect(decimalPrice.status).toBe(422);
+
+    const tooHigh = await createProduct(agent, csrf, {
+      type: 'product',
+      name: 'Chaise',
+      unit_price: 1000000000000,
+    });
+    expect(tooHigh.status).toBe(422);
 
     const massAssignment = await createProduct(agent, csrf, {
       type: 'product',

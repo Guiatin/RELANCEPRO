@@ -21,7 +21,7 @@ function mapProduct(row) {
     name: row.name,
     description: row.description ?? null,
     unit: row.unit ?? null,
-    unitPrice: String(row.unit_price),
+    unitPrice: Number(row.unit_price),
     taxRate: row.tax_rate,
     isActive: Boolean(row.is_active),
     createdAt: row.created_at,
@@ -37,6 +37,12 @@ function escapeLike(value) {
 function toActiveFlag(active) {
   if (active === undefined || active === null || active === '') return null;
   return active === true || active === 'true' || active === 1 || active === '1' ? 1 : 0;
+}
+
+function toColumnValue(key, value) {
+  if (key === 'isActive') return value ? 1 : 0;
+  if (key === 'unitPrice') return String(value);
+  return value;
 }
 
 export async function findAllByCompany(conn, companyId, filters = {}) {
@@ -104,7 +110,7 @@ export async function create(conn, companyId, data) {
     if (key === 'type' || key === 'name') continue;
     if (data[key] === undefined) continue;
     columns.push(column);
-    values.push(key === 'isActive' ? (data[key] ? 1 : 0) : data[key]);
+    values.push(toColumnValue(key, data[key]));
   }
 
   const [result] = await conn.execute(
@@ -123,7 +129,7 @@ export async function update(conn, companyId, productId, data) {
   for (const [key, column] of Object.entries(UPDATABLE_COLUMNS)) {
     if (data[key] === undefined) continue;
     sets.push(`\`${column}\` = ?`);
-    params.push(key === 'isActive' ? (data[key] ? 1 : 0) : data[key]);
+    params.push(toColumnValue(key, data[key]));
   }
 
   if (sets.length === 0) {

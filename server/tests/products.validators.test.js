@@ -29,7 +29,7 @@ describe('createProductSchema', () => {
       name: 'Nettoyage',
       description: 'Prestation de nettoyage',
       unit: 'heure',
-      unit_price: '1500',
+      unit_price: 1500,
       tax_rate: '18.00',
       is_active: false,
     });
@@ -83,18 +83,31 @@ describe('createProductSchema', () => {
     expectValid(createProductSchema, { type: 'product', name: 'Chaise', unit: 'a'.repeat(20) });
   });
 
-  it('accepte les prix BIGINT UNSIGNED valides', () => {
-    expectValid(createProductSchema, { type: 'product', name: 'Chaise', unit_price: '0' });
-    expectValid(createProductSchema, { type: 'product', name: 'Chaise', unit_price: '1500' });
+  it('accepte les prix entiers de 0 à 999 999 999 999', () => {
+    expectValid(createProductSchema, { type: 'product', name: 'Chaise', unit_price: 0 });
+    expectValid(createProductSchema, { type: 'product', name: 'Chaise', unit_price: 1500 });
     expectValid(createProductSchema, {
       type: 'product',
       name: 'Chaise',
-      unit_price: '18446744073709551615',
+      unit_price: 999999999999,
     });
   });
 
   it('refuse les prix invalides', () => {
-    const invalidPrices = [1500, '18446744073709551616', '-1', '1.5', 'abc', '', '007', null];
+    const invalidPrices = [
+      -1,
+      1.5,
+      1000000000000,
+      Number.MAX_SAFE_INTEGER,
+      '1500',
+      '0',
+      '1.5',
+      'abc',
+      '',
+      null,
+      Infinity,
+      NaN,
+    ];
 
     for (const unitPrice of invalidPrices) {
       expectInvalid(createProductSchema, {
@@ -155,7 +168,7 @@ describe('createProductSchema', () => {
 describe('updateProductSchema', () => {
   it('accepte une modification partielle', () => {
     expectValid(updateProductSchema, { name: 'Table' });
-    expectValid(updateProductSchema, { unit_price: '2000' });
+    expectValid(updateProductSchema, { unit_price: 2000 });
     expectValid(updateProductSchema, { is_active: false });
   });
 
@@ -165,7 +178,7 @@ describe('updateProductSchema', () => {
       name: 'Nettoyage',
       description: 'Prestation',
       unit: 'heure',
-      unit_price: '1500',
+      unit_price: 1500,
       tax_rate: '18.00',
       is_active: true,
     });
@@ -185,7 +198,9 @@ describe('updateProductSchema', () => {
   });
 
   it('refuse un prix ou un taux invalide', () => {
-    expectInvalid(updateProductSchema, { unit_price: '1.5' });
+    expectInvalid(updateProductSchema, { unit_price: 1.5 });
+    expectInvalid(updateProductSchema, { unit_price: '1500' });
+    expectInvalid(updateProductSchema, { unit_price: 1000000000000 });
     expectInvalid(updateProductSchema, { tax_rate: 18.123 });
   });
 

@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 const BIGINT_UNSIGNED_MAX = '18446744073709551615';
-const UNSIGNED_BIGINT_PATTERN = /^(0|[1-9]\d*)$/;
+const UNIT_PRICE_MAX = 999999999999;
 const PRODUCT_TYPES = ['product', 'service'];
 
 const nameSchema = z
@@ -11,10 +11,10 @@ const nameSchema = z
   .max(120, 'Le nom du produit ne doit pas dépasser 120 caractères.');
 
 const unitPriceSchema = z
-  .string()
-  .trim()
-  .regex(UNSIGNED_BIGINT_PATTERN, 'Le prix unitaire doit être un entier positif.')
-  .refine(isWithinBigIntUnsigned, 'Le prix unitaire dépasse la limite autorisée.');
+  .number({ message: 'Le prix unitaire doit être un nombre entier.' })
+  .int('Le prix unitaire doit être un entier.')
+  .min(0, 'Le prix unitaire doit être un entier positif ou nul.')
+  .max(UNIT_PRICE_MAX, 'Le prix unitaire ne doit pas dépasser 999 999 999 999.');
 
 const taxRateSchema = z
   .union([z.number().finite(), z.string()])

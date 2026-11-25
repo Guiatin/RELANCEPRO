@@ -9,7 +9,7 @@ import {
 import { AppError, validationError } from '../utils/errors.js';
 
 const PRODUCT_TYPES = new Set(['product', 'service']);
-const BIGINT_UNSIGNED_MAX = 18446744073709551615n;
+const UNIT_PRICE_MAX = 999999999999;
 
 const PRODUCT_FIELDS = {
   type: 'type',
@@ -120,35 +120,22 @@ function readUnit(data, errors) {
 function readUnitPrice(data, errors) {
   if (data.unit_price === undefined) return undefined;
 
-  let text = null;
+  const value = data.unit_price;
 
-  if (typeof data.unit_price === 'string') {
-    text = data.unit_price.trim();
-  } else if (typeof data.unit_price === 'number' && Number.isSafeInteger(data.unit_price)) {
-    text = String(data.unit_price);
-  } else if (typeof data.unit_price === 'bigint') {
-    text = data.unit_price.toString();
-  }
-
-  if (text === null || !/^\d+$/.test(text)) {
+  if (
+    typeof value !== 'number' ||
+    !Number.isInteger(value) ||
+    value < 0 ||
+    value > UNIT_PRICE_MAX
+  ) {
     errors.push({
       field: 'unit_price',
-      message: 'Le prix unitaire doit être un entier positif.',
+      message: 'Le prix unitaire doit être un entier compris entre 0 et 999 999 999 999.',
     });
     return undefined;
   }
 
-  const unitPrice = BigInt(text);
-
-  if (unitPrice > BIGINT_UNSIGNED_MAX) {
-    errors.push({
-      field: 'unit_price',
-      message: 'Le prix unitaire dépasse la limite autorisée.',
-    });
-    return undefined;
-  }
-
-  return unitPrice.toString();
+  return value;
 }
 
 function readTaxRate(data, errors) {
