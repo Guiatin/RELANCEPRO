@@ -12,6 +12,9 @@ import ClientFormPage from '../features/clients/ClientFormPage.jsx';
 import ProductsPage from '../features/products/ProductsPage.jsx';
 import ProductDetailPage from '../features/products/ProductDetailPage.jsx';
 import ProductFormPage from '../features/products/ProductFormPage.jsx';
+import QuotesPage from '../features/quotes/QuotesPage.jsx';
+import QuoteDetailPage from '../features/quotes/QuoteDetailPage.jsx';
+import QuoteFormPage from '../features/quotes/QuoteFormPage.jsx';
 import SecurityPage from '../features/settings/SecurityPage.jsx';
 
 export const router = createBrowserRouter([
@@ -48,6 +51,10 @@ export const router = createBrowserRouter([
       { path: 'products/nouveau', element: <ProductFormPage /> },
       { path: 'products/:id', element: <ProductDetailPage /> },
       { path: 'products/:id/modifier', element: <ProductFormPage /> },
+      { path: 'quotes', element: <QuotesPage /> },
+      { path: 'quotes/nouveau', element: <QuoteFormPage /> },
+      { path: 'quotes/:id', element: <QuoteDetailPage /> },
+      { path: 'quotes/:id/modifier', element: <QuoteFormPage /> },
       { path: 'parametres', element: <Navigate to="/app/parametres/securite" replace /> },
       { path: 'parametres/securite', element: <SecurityPage /> },
     ],

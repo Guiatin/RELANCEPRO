@@ -102,6 +102,19 @@ export async function findById(conn, companyId, productId) {
   return rows[0] ? mapProduct(rows[0]) : null;
 }
 
+export async function findExistingIds(conn, companyId, productIds) {
+  if (productIds.length === 0) return new Set();
+
+  const placeholders = productIds.map(() => '?').join(', ');
+  const [rows] = await conn.execute(
+    `SELECT id FROM products
+     WHERE company_id = ? AND deleted_at IS NULL AND id IN (${placeholders})`,
+    [companyId, ...productIds],
+  );
+
+  return new Set(rows.map((row) => String(row.id)));
+}
+
 export async function create(conn, companyId, data) {
   const columns = ['company_id', 'type', 'name'];
   const values = [companyId, data.type, data.name];

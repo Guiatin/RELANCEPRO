@@ -1,17 +1,18 @@
 import { validationError } from '../utils/errors.js';
 
+function toDetails(issue) {
+  if (issue.code === 'unrecognized_keys' && Array.isArray(issue.keys)) {
+    return issue.keys.map((key) => ({ field: key, message: 'Champ non autorisé.' }));
+  }
+
+  return [{ field: issue.path.join('.'), message: issue.message }];
+}
+
 function invalid(schema, value, next) {
   const result = schema.safeParse(value);
 
   if (!result.success) {
-    next(
-      validationError(
-        result.error.issues.map((issue) => ({
-          field: issue.path.join('.'),
-          message: issue.message,
-        })),
-      ),
-    );
+    next(validationError(result.error.issues.flatMap(toDetails)));
 
     return null;
   }

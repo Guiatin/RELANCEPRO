@@ -28,7 +28,7 @@ const NAV_GROUPS = [
     items: [
       { label: 'Clients', to: '/app/clients', icon: Users },
       { label: 'Produits & services', to: '/app/products', icon: Package },
-      { label: 'Devis', icon: FileText, soon: true },
+      { label: 'Devis', to: '/app/quotes', icon: FileText },
       { label: 'Factures', icon: ReceiptText, soon: true },
       { label: 'Paiements', icon: CreditCard, soon: true },
       { label: 'Relances', icon: BellRing, soon: true },
@@ -49,6 +49,8 @@ const PAGE_TITLES = {
   '/app/clients/nouveau': 'Nouveau client',
   '/app/products': 'Produits & services',
   '/app/products/nouveau': 'Nouveau produit',
+  '/app/quotes': 'Devis',
+  '/app/quotes/nouveau': 'Nouveau devis',
   '/app/parametres/securite': 'Sécurité du compte',
 };
 
@@ -57,6 +59,8 @@ function pageTitle(pathname) {
   if (/^\/app\/clients\/[^/]+$/.test(pathname)) return 'Fiche client';
   if (/^\/app\/products\/[^/]+\/modifier$/.test(pathname)) return 'Modifier le produit';
   if (/^\/app\/products\/[^/]+$/.test(pathname)) return 'Fiche produit';
+  if (/^\/app\/quotes\/[^/]+\/modifier$/.test(pathname)) return 'Modifier le devis';
+  if (/^\/app\/quotes\/[^/]+$/.test(pathname)) return 'Fiche devis';
 
   return PAGE_TITLES[pathname] ?? 'Espace entreprise';
 }
